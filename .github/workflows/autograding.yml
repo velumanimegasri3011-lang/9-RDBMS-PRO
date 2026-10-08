@@ -1,0 +1,56 @@
+name: SQL Autograding - Student Department INNER JOIN
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  autograding:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: CollegeDB
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            mysqladmin ping \
+              -h 127.0.0.1 \
+              -P 3306 \
+              -uroot \
+              -proot \
+              --silent && break
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Initialize Database
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot \
+            -e "CREATE DATABASE IF NOT EXISTS CollegeDB;"
+
+      - name: Run Student Solution
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot \
+            CollegeDB < solution.sql
+
+      - name: Run Autograding Tests
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot \
+            CollegeDB < test.sql
